@@ -1,0 +1,59 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: cd-pipeline
+spec:
+  params:
+    - name: repo-url
+    - name: branch
+      default: "master"
+  tasks:
+    - name: clone
+      taskRef:
+        name: checkout
+      params:
+        - name: repo-url
+          value: "$(params.repo-url)"
+        - name: branch
+          value: "$(params.branch)"
+
+    - name: lint
+      taskRef:
+        name: run-javascript
+      params:
+        - name: script
+          value: |
+            console.log("Calling ESLint linter...");  // Replacing Flake8 with ESLint for JS
+      runAfter:
+        - clone
+
+    - name: tests
+      taskRef:
+        name: run-javascript
+      params:
+        - name: script
+          value: |
+            console.log("Running unit tests with Jest...");
+      runAfter:
+        - lint
+
+    - name: build
+      taskRef:
+        name: run-javascript
+      params:
+        - name: script
+          value: |
+            console.log(`Building image for ${process.env.REPO_URL} ...`);
+      runAfter:
+        - tests
+
+    - name: deploy
+      taskRef:
+        name: run-javascript
+      params:
+        - name: script
+          value: |
+            console.log(`Deploying ${process.env.BRANCH} branch of ${process.env.REPO_URL} ...`);
+      runAfter:
+        - build
